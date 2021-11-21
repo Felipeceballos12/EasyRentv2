@@ -1,3 +1,4 @@
+import {service} from '@loopback/core';
 import {
   Count,
   CountSchema,
@@ -19,12 +20,17 @@ import {
 } from '@loopback/rest';
 import {Cliente} from '../models';
 import {ClienteRepository} from '../repositories';
+import {AutenticacionService} from '../services';
+const fetch = require("node-fetch");
+
 
 export class ClienteController {
   constructor(
     @repository(ClienteRepository)
-    public clienteRepository : ClienteRepository,
-  ) {}
+    public clienteRepository: ClienteRepository,
+    @service(AutenticacionService)
+    public ServicioAutenticacion: AutenticacionService
+  ) { }
 
   @post('/clientes')
   @response(200, {
@@ -44,9 +50,25 @@ export class ClienteController {
     })
     cliente: Omit<Cliente, 'Id'>,
   ): Promise<Cliente> {
-    return this.clienteRepository.create(cliente);
-  }
 
+    let clave = this.ServicioAutenticacion.GenerarClave();
+    let ClaveCifrada = this.ServicioAutenticacion.CifrarClave(clave);
+    cliente.Clave = ClaveCifrada;
+    let p = await this.clienteRepository.create(cliente);
+
+    //Notificación al usuario
+    /**Parametros del servico
+     * let destino = cliente.correo;
+     * let asunto = 'Registro en la plataforma';
+     * let contenido = 'Buen día ${cliente.nombres}, el usuario resgistrado es: ${cliente.correo} y su clave es: ${clave}.';
+     * fetch('URL del servicio de python?correo_destiono=${destino}&asunto=${asunto}&contenido${contenido}')
+     * .then(data: any) => {
+     *  consola.log(data);
+     * })
+     */
+    return p;
+
+  }
   @get('/clientes/count')
   @response(200, {
     description: 'Cliente model count',
